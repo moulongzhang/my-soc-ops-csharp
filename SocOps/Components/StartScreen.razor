@@ -1,24 +1,92 @@
-<div class="start-screen">
-    <div class="start-content">
-        <h1 class="start-title">Soc Ops</h1>
-        <p class="start-subtitle">social bingo</p>
+@using SocOps.Data
+@implements IDisposable
 
-        <div class="start-rules">
-            <span class="start-rules-label">How to play</span>
-            <ul>
-                <li>Find people who match the descriptions</li>
-                <li>Tap a square when you find a match</li>
-                <li>Complete five in a row to win</li>
-            </ul>
+<div class="start-screen">
+    @* Decorative grid pattern in background *@
+    <div class="start-bg-grid" aria-hidden="true">
+        @for (var i = 0; i < 9; i++)
+        {
+            <div class="start-bg-cell"></div>
+        }
+    </div>
+
+    <div class="start-content">
+        @* Top flourish *@
+        <div class="start-flourish" style="animation-delay: 0s;">✦</div>
+
+        @* Title block *@
+        <h1 class="start-title" style="animation-delay: 0.1s;">Soc Ops</h1>
+        <div class="start-divider" style="animation-delay: 0.2s;"></div>
+        <p class="start-subtitle" style="animation-delay: 0.3s;">social bingo</p>
+
+        @* Rotating sample prompt *@
+        <div class="start-preview" style="animation-delay: 0.5s;">
+            <span class="start-preview-label">find someone who</span>
+            <span class="start-preview-prompt">@_currentPrompt</span>
         </div>
 
-        <button class="start-btn" @onclick="OnStart">
-            Begin
+        @* Minimal bingo grid preview *@
+        <div class="start-mini-grid" style="animation-delay: 0.65s;" aria-hidden="true">
+            @for (var i = 0; i < 25; i++)
+            {
+                var filled = _previewFilled.Contains(i);
+                var center = i == 12;
+                <div class="start-mini-cell @(center ? "start-mini-cell--free" : filled ? "start-mini-cell--filled" : "")"></div>
+            }
+        </div>
+
+        @* Rules *@
+        <div class="start-steps" style="animation-delay: 0.8s;">
+            <div class="start-step">
+                <span class="start-step-num">01</span>
+                <span class="start-step-text">mingle and find matches</span>
+            </div>
+            <div class="start-step">
+                <span class="start-step-num">02</span>
+                <span class="start-step-text">tap squares to mark them</span>
+            </div>
+            <div class="start-step">
+                <span class="start-step-num">03</span>
+                <span class="start-step-text">complete five in a row</span>
+            </div>
+        </div>
+
+        @* CTA *@
+        <button class="start-btn" style="animation-delay: 1.0s;" @onclick="OnStart">
+            begin
         </button>
+
+        <p class="start-footer" style="animation-delay: 1.1s;">
+            @Questions.QuestionsList.Count prompts · 5×5 grid · endless combinations
+        </p>
     </div>
 </div>
 
 @code {
     [Parameter]
     public EventCallback OnStart { get; set; }
+
+    private string _currentPrompt = "";
+    private readonly HashSet<int> _previewFilled = new() { 2, 5, 7, 10, 12, 14, 17, 19, 22 };
+    private System.Threading.Timer? _promptTimer;
+    private int _promptIndex;
+    private static readonly Random _random = new();
+
+    protected override void OnInitialized()
+    {
+        _promptIndex = _random.Next(Questions.QuestionsList.Count);
+        _currentPrompt = Questions.QuestionsList[_promptIndex];
+
+        _promptTimer = new System.Threading.Timer(async _ =>
+        {
+            _promptIndex = (_promptIndex + 1) % Questions.QuestionsList.Count;
+            _currentPrompt = Questions.QuestionsList[_promptIndex];
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+    }
+
+    public void Dispose()
+    {
+        _promptTimer?.Dispose();
+    }
 }
